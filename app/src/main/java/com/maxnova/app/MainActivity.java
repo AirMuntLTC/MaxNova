@@ -6,7 +6,7 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.DownloadManager;
-import android.app.AppWidgetManager;
+import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -289,7 +289,6 @@ public class MainActivity extends Activity {
         billingClient = BillingClient.newBuilder(this)
                 .setListener(this::onPurchasesUpdated)
                 .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
-                .enableAutoServiceReconnection()
                 .build();
         connectBilling();
     }
@@ -319,7 +318,7 @@ public class MainActivity extends Activity {
         billingClient.queryProductDetailsAsync(QueryProductDetailsParams.newBuilder().setProductList(products).build(), (result, detailsResult) -> {
             if (result.getResponseCode() != BillingClient.BillingResponseCode.OK || detailsResult == null) return;
             productCache.clear();
-            for (ProductDetails d : detailsResult.getProductDetailsList()) productCache.put(d.getProductId(), d);
+            for (ProductDetails d : detailsResult) productCache.put(d.getProductId(), d);
             notifyJs("billingProductsReady", true, "");
         });
     }
@@ -523,6 +522,48 @@ public class MainActivity extends Activity {
                 } else if (data.getData() != null) result=new Uri[]{data.getData()};
             }
             if(fileCallback!=null) fileCallback.onReceiveValue(result); fileCallback = null;
+        }
+    }
+
+    private void postReplyNotification(String text) {
+        try {
+            String body = text == null ? "" : text;
+            if (body.length() > 180) body = body.substring(0, 177) + "…";
+
+            Notification.Builder b = Build.VERSION.SDK_INT >= 26
+                    ? new Notification.Builder(MainActivity.this, NOTIFICATION_CHANNEL)
+                    : new Notification.Builder(MainActivity.this);
+
+            Intent open = new Intent(MainActivity.this, MainActivity.class);
+            open.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+            android.app.PendingIntent pi = android.app.PendingIntent.getActivity(
+                    MainActivity.this,
+                    501,
+                    open,
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT |
+                    android.app.PendingIntent.FLAG_IMMUTABLE);
+
+            b.setSmallIcon(android.R.drawable.ic_dialog_info)
+                    .setContentTitle("MaxNova replied")
+                    .setContentText(body)
+                    .setStyle(new Notification.BigTextStyle().bigText(body))
+                    .setAutoCancel(true)
+                    .setContentIntent(pi)
+                    .setPriority(Notification.PRIORITY_HIGH);
+
+            if (Build.VERSION.SDK_INT >= 26) {
+                b.setChannelId(NOTIFICATION_CHANNEL);
+            }
+
+            NotificationManager nm =
+                    (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+
+            if (nm != null) {
+                nm.notify((int) (System.currentTimeMillis() % 100000), b.build());
+            }
+        } catch (Exception ignored) {
+            // Never crash the WebView because of a notification failure.
         }
     }
 
