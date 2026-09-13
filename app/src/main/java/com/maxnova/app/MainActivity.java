@@ -23,6 +23,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.URLUtil;
+import androidx.core.content.FileProvider;
 import android.widget.Toast;
 import android.util.Base64;
 
@@ -64,6 +65,8 @@ public class MainActivity extends Activity {
     private android.webkit.PermissionRequest pendingAudioPermissionRequest;
     private String pendingNotificationBody;
     private static final int FILE_REQUEST = 901;
+    private static final int CAMERA_REQUEST = 904;
+    private Uri pendingCameraUri;
     private static final int MIC_REQUEST = 902;
     private static final int NOTIFICATION_REQUEST = 903;
     private static final String NOTIFICATION_CHANNEL = "maxnova_replies";
@@ -125,22 +128,46 @@ public class MainActivity extends Activity {
             @Override public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams params) {
                 if (fileCallback != null) fileCallback.onReceiveValue(null);
                 fileCallback = cb;
+
+                // HTML <input type="file" ... capture="environment">
+                // should open the phone camera instead of the Android file picker.
+                if (params != null && params.isCaptureEnabled()) {
+                    if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(new String[]{Manifest.permission.CAMERA}, CAMERA_REQUEST);
+                        return true;
+                    }
+                    return openCameraForWebView();
+                }
+
                 Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 i.addCategory(Intent.CATEGORY_OPENABLE);
+
                 String[] accepts = params != null ? params.getAcceptTypes() : null;
                 String mime = "*/*";
                 if (accepts != null) {
                     for (String a : accepts) {
-                        if (a != null && !a.trim().isEmpty()) { mime = a; break; }
+                        if (a != null && !a.trim().isEmpty()) {
+                            mime = a;
+                            break;
+                        }
                     }
                 }
-                if (mime.contains("image") || mime.contains("video") || mime.equals("*/*")) i.setType(mime);
-                else i.setType(mime);
-                boolean multiple = params != null && params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
+
+                i.setType(mime);
+                boolean multiple = params != null &&
+                        params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
                 i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, multiple);
-                try { startActivityForResult(i, FILE_REQUEST); } catch (Exception e) {
-                    fileCallback.onReceiveValue(null); fileCallback = null;
-                    Toast.makeText(MainActivity.this, "No native file picker is available.", Toast.LENGTH_LONG).show();
+
+                try {
+                    startActivityForResult(i, FILE_REQUEST);
+                } catch (Exception e) {
+                    fileCallback.onReceiveValue(null);
+                    fileCallback = null;
+                    Toast.makeText(
+                        MainActivity.this,
+                        "No native file picker is available.",
+                        Toast.LENGTH_LONG
+                    ).show();
                 }
                 return true;
             }
@@ -512,8 +539,59 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 
+    private boolean openCameraForWebView() {
+        try {
+            File cameraDir = new File(getCacheDir(), "camera");
+            if (!cameraDir.exists() && !cameraDir.mkdirs()) {
+                throw new Exception("Unable to create camera directory");
+            }
+
+            File photoFile = File.createTempFile("maxnova_camera_", ".jpg", cameraDir);
+
+            pendingCameraUri = FileProvider.getUriForFile(
+                this,
+                getPackageName() + ".fileprovider",
+                photoFile
+            );
+
+            Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+            cameraIntent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, pendingCameraUri);
+            cameraIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            cameraIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+
+            startActivityForResult(cameraIntent, CAMERA_REQUEST);
+            return true;
+        } catch (Exception e) {
+            if (fileCallback != null) {
+                fileCallback.onReceiveValue(null);
+                fileCallback = null;
+            }
+            pendingCameraUri = null;
+            Toast.makeText(
+                MainActivity.this,
+                "Unable to open the camera.",
+                Toast.LENGTH_LONG
+            ).show();
+            return true;
+        }
+    }
+
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == CAMERA_REQUEST) {
+            if (fileCallback != null) {
+                if (resultCode == RESULT_OK && pendingCameraUri != null) {
+                    fileCallback.onReceiveValue(new Uri[]{pendingCameraUri});
+                } else {
+                    fileCallback.onReceiveValue(null);
+                }
+                fileCallback = null;
+            }
+            pendingCameraUri = null;
+            return;
+        }
+
         if (requestCode == FILE_REQUEST && fileCallback != null) {
             Uri[] result = null;
             if (resultCode == RESULT_OK && data != null) {
