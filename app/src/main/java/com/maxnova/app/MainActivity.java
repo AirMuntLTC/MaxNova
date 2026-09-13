@@ -450,13 +450,17 @@ public class MainActivity extends Activity {
                 .setProductDetails(d).setOfferToken(chosen.getOfferToken());
         BillingFlowParams.Builder flow = BillingFlowParams.newBuilder();
         if (currentSubscriptionPurchase != null && !currentSubscriptionPurchase.getProducts().isEmpty()) {
-            String oldProduct = currentSubscriptionPurchase.getProducts().get(0);
-            int mode = "max".equals(plan) ? BillingFlowParams.ProductDetailsParams.SubscriptionProductReplacementParams.ReplacementMode.CHARGE_PRORATED_PRICE : BillingFlowParams.ProductDetailsParams.SubscriptionProductReplacementParams.ReplacementMode.DEFERRED;
-            BillingFlowParams.ProductDetailsParams.SubscriptionProductReplacementParams replacement = BillingFlowParams.ProductDetailsParams.SubscriptionProductReplacementParams.newBuilder()
-                    .setOldProductId(oldProduct).setReplacementMode(mode).build();
-            productBuilder.setSubscriptionProductReplacementParams(replacement);
-            flow.setSubscriptionUpdateParams(BillingFlowParams.SubscriptionUpdateParams.newBuilder()
-                    .setOldPurchaseToken(currentSubscriptionPurchase.getPurchaseToken()).build());
+            int mode = "max".equals(plan)
+                    ? BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.CHARGE_PRORATED_PRICE
+                    : BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.DEFERRED;
+
+            BillingFlowParams.SubscriptionUpdateParams replacement =
+                    BillingFlowParams.SubscriptionUpdateParams.newBuilder()
+                            .setOldPurchaseToken(currentSubscriptionPurchase.getPurchaseToken())
+                            .setSubscriptionReplacementMode(mode)
+                            .build();
+
+            flow.setSubscriptionUpdateParams(replacement);
         }
         flow.setProductDetailsParamsList(Collections.singletonList(productBuilder.build()));
         if (billingUserId != null) flow.setObfuscatedAccountId(hashAccountId(billingUserId));
@@ -474,10 +478,29 @@ public class MainActivity extends Activity {
 
     private void openForIntent(Intent intent) {
         String action = intent != null ? intent.getStringExtra("nativeAction") : null;
-        if (action == null && intent != null && "maxnova".equals(intent.getScheme())) action = intent.getHost();
-        if ("voice".equals(action) && android.os.Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_REQUEST);
-        String suffix = action == null ? "" : "?nativeAction=" + Uri.encode(action);
-        webView.loadUrl("file:///android_asset/chat.html" + suffix);
+
+        if (action == null && intent != null) {
+            Uri data = intent.getData();
+            if (data != null && "maxnova".equals(data.getScheme())) {
+                action = data.getHost();
+            }
+        }
+
+        if ("voice".equals(action)
+                && android.os.Build.VERSION.SDK_INT >= 23
+                && checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                    != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                    new String[]{Manifest.permission.RECORD_AUDIO},
+                    MIC_REQUEST);
+        }
+
+        String suffix = action == null
+                ? ""
+                : "?nativeAction=" + Uri.encode(action);
+
+        webView.loadUrl(
+                "file:///android_asset/chat.html" + suffix);
     }
 
     @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); openForIntent(intent); }
