@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="google" content="notranslate" />
+  <meta name="format-detection" content="telephone=no, email=no, address=no" />
+  <title>MaxNova - Chat</title>
+  <script>
+    (function () {
+      var pref = localStorage.getItem('maxnova_theme') || 'dark';
+      var isLight = pref === 'light' || (pref === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+      document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css?v=33" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <script src="jszip.min.js?v=1"></script>
+  <script type="module">import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs"; window.MaxNovaPDF = pdfjsLib; window.MaxNovaPDF.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";</script>
+</head>
+<body autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+  <div id="loadingScreen" class="loading-screen">
+    <div class="chat-skeleton" aria-hidden="true">
+      <div class="chat-skeleton-row left"><span class="chat-skeleton-bubble w1"></span></div>
+      <div class="chat-skeleton-row right"><span class="chat-skeleton-bubble w2"></span></div>
+      <div class="chat-skeleton-row left"><span class="chat-skeleton-bubble w3"></span></div>
+      <div class="chat-skeleton-row left"><span class="chat-skeleton-bubble w4"></span></div>
+      <div class="chat-skeleton-row right"><span class="chat-skeleton-bubble w1"></span></div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div id="sidebarOverlay" class="sidebar-overlay hidden"></div>
+  <div id="sidebar" class="sidebar hidden">
+    <div class="sidebar-profile">
+      <div class="avatar-circle" id="avatarCircle">?</div>
+      <div class="profile-email" id="sidebarEmail"></div>
+      <button id="openSettingsBtn" class="icon-btn sidebar-settings-btn" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+    <button type="button" class="sidebar-plan-card" id="sidebarPlanCard">
+      <div class="sidebar-plan-name" id="sidebarPlanName">Free plan</div>
+      <div class="sidebar-plan-usage" id="sidebarPlanUsage"></div>
+      <div class="sidebar-plan-cta" id="sidebarPlanCta">Upgrade →</div>
+    </button>
+
+    <button id="openImagesBtn" class="sidebar-nav-item">
+      <span class="sidebar-nav-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+      </span>
+      <span>Images</span>
+    </button>
+    <button id="openFilesBtn" class="sidebar-nav-item" type="button">
+      <span class="sidebar-nav-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 9h18"/></svg>
+      </span>
+      <span>Files</span>
+    </button>
+    <button id="openLibraryBtn" class="sidebar-nav-item">
+      <span class="sidebar-nav-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="15" height="15" rx="2"/><path d="M7 7V4a1 1 0 0 1 1-1h13a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-3"/></svg>
+      </span>
+      <span>Library</span>
+    </button>
+    <button id="openKidsModeBtn" class="sidebar-nav-item kids-mode-nav-item">
+      <span class="sidebar-nav-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 11.5c-1.8-1.4-2.8-3.1-2.8-5A4.3 4.3 0 0 1 10 2.2c.9 0 1.7.3 2.4.8.7-.5 1.5-.8 2.4-.8a4.3 4.3 0 0 1 4.3 4.3c0 1.9-1 3.6-2.8 5"/><path d="M8.5 11.5c-1.3.8-2.2 2.1-2.2 3.7 0 2.8 2.5 5.1 5.6 5.1s5.6-2.3 5.6-5.1c0-1.6-.9-2.9-2.2-3.7"/><circle cx="9.4" cy="8" r=".7" fill="currentColor" stroke="none"/><circle cx="14.6" cy="8" r=".7" fill="currentColor" stroke="none"/><path d="M9.8 14.5c1.4 1.1 3 1.1 4.4 0"/></svg>
+      </span>
+      <span>Kids Mode</span>
+      <span class="kids-mode-nav-status" id="kidsModeNavStatus">Off</span>
+    </button>
+
+    <button id="newConversationBtn" class="new-convo-btn">+ New conversation</button>
+    <div class="conversation-list" id="conversationList"></div>
+  </div>
+
+  <div id="appShell" class="app-shell hidden">
+    <div class="navbar">
+      <div class="navbar-left">
+        <button id="menuBtn" class="icon-btn" aria-label="Menu">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="maxnova-brand" aria-label="MaxNova">
+          <span class="maxnova-word"><span class="maxnova-max">Max</span><span class="maxnova-nova">Nova</span></span>
+          <span class="maxnova-star maxnova-star-1" aria-hidden="true">✦</span>
+          <span class="maxnova-star maxnova-star-2" aria-hidden="true">✧</span>
+          <span class="maxnova-star maxnova-star-3" aria-hidden="true">·</span>
+          <span class="maxnova-star maxnova-star-4" aria-hidden="true">✦</span>
+        </div>
+      </div>
+      <div class="navbar-right">
+        <div id="kidsModeIndicator" class="kids-mode-indicator hidden" aria-hidden="true" title="Kids Mode is on">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 11.5c-1.8-1.4-2.8-3.1-2.8-5A4.3 4.3 0 0 1 10 2.2c.9 0 1.7.3 2.4.8.7-.5 1.5-.8 2.4-.8a4.3 4.3 0 0 1 4.3 4.3c0 1.9-1 3.6-2.8 5"/><path d="M8.5 11.5c-1.3.8-2.2 2.1-2.2 3.7 0 2.8 2.5 5.1 5.6 5.1s5.6-2.3 5.6-5.1c0-1.6-.9-2.9-2.2-3.7"/><circle cx="9.4" cy="8" r=".7" fill="currentColor" stroke="none"/><circle cx="14.6" cy="8" r=".7" fill="currentColor" stroke="none"/><path d="M9.8 14.5c1.4 1.1 3 1.1 4.4 0"/></svg>
+          <span>Kids Mode</span>
+        </div>
+        <button type="button" href="pricing.html" id="planBadge" class="plan-badge" title="View plans"></button>
+      </div>
+    </div>
+
+    <div class="chat-wrap">
+      <div class="messages" id="messages"></div>
+
+      <div id="voiceStopRow" class="voice-stop-row hidden">
+        <button id="stopVoiceBtn" class="stop-voice-btn">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+          Stop voice
+        </button>
+      </div>
+
+      <div id="attachPreviewRow" class="attach-preview-row hidden">
+        <div class="attach-chip" id="attachChip">
+          <img id="attachChipImg" class="attach-chip-img hidden no-native-image-menu" alt="" draggable="false" />
+          <span class="attach-chip-file hidden" id="attachChipFileIcon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </span>
+          <span class="attach-chip-name" id="attachChipName"></span>
+          <button id="attachChipRemove" class="attach-chip-remove" aria-label="Remove attachment">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="ai-disclaimer" role="note" aria-label="AI accuracy notice">
+        <span class="ai-disclaimer-dot" aria-hidden="true"></span>
+        <span>MaxNova can make mistakes. Check important information.</span>
+      </div>
+
+      <div class="chat-input-row">
+        <div class="chat-composer-main">
+          <textarea id="chatInput" rows="1" placeholder="Type a message…" aria-label="Message" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" name="maxnova_message_box"></textarea>
+          <div class="chat-composer-actions">
+            <button id="micBtn" class="icon-btn mic-btn" aria-label="Voice input" title="Speak your message">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
+            <button id="sendBtn" class="send-btn">Send</button>
+          </div>
+        </div>
+        <div class="chat-attachment-actions" aria-label="Attachment actions">
+          <button id="plusBtn" class="icon-btn plus-btn" aria-label="Add attachment" title="Add attachment">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          </button>
+          <button id="uploadMediaBtn" class="icon-btn upload-media-btn" aria-label="Upload media" title="Upload photo or video">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Hidden native pickers -->
+      <input type="file" id="uploadMediaInput" accept="image/*,video/*" class="hidden" />
+      <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" />
+      <input type="file" id="photosInput" accept="image/*,video/*" class="hidden" />
+      <input type="file" id="filesInput" accept="*/*" class="hidden" />
+      <input type="file" id="wordDocumentsInput" accept=".doc,.docx,.wps,.wpt,.rtf,.odt,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-works,application/rtf,application/vnd.oasis.opendocument.text,application/kswps" class="hidden" />
+      <input type="file" id="pdfInput" accept=".pdf,application/pdf" class="hidden" />
+    </div>
+  </div>
+
+  <!-- ===== "+" attachment action sheet ===== -->
+  <div id="attachSheetOverlay" class="sheet-overlay hidden">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <button class="sheet-item" id="sheetCameraBtn">
+        <span class="sheet-item-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </span>
+        <span>Camera</span>
+      </button>
+      <button class="sheet-item" id="sheetPhotosBtn">
+        <span class="sheet-item-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        </span>
+        <span>Photos &amp; videos</span>
+      </button>
+      <button class="sheet-item" id="sheetFilesBtn">
+        <span class="sheet-item-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </span>
+        <span>Files</span>
+      </button>
+      <button class="sheet-item" id="sheetWordBtn">
+        <span class="sheet-item-icon sheet-item-icon-word">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h5"/><path d="M8.5 12.5h2l1 4 1.5-4h1l1.5 4 1-4"/></svg>
+        </span>
+        <span>Word, WPS &amp; docs</span>
+        <span class="sheet-ai-badge">AI</span>
+      </button>
+      <button class="sheet-item" id="sheetPdfBtn">
+        <span class="sheet-item-icon sheet-item-icon-pdf">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h5"/><path d="M8 17v-5h2a1.7 1.7 0 0 1 0 3.4H8M13 12v5M13 12h1.5a2.5 2.5 0 0 1 0 5H13"/></svg>
+        </span>
+        <span>PDFs</span>
+        <span class="sheet-ai-badge">AI</span>
+      </button>
+      <button class="sheet-item sheet-item-cancel" id="sheetCancelBtn">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ===== Settings full-screen overlay ===== -->
+  <div id="settingsOverlay" class="fullscreen-overlay hidden">
+    <div class="fullscreen-header">
+      <button class="icon-btn" id="closeSettingsBtn" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="fullscreen-title">Settings</div>
+      <div class="fullscreen-header-spacer"></div>
+    </div>
+
+    <div class="settings-profile">
+      <div class="avatar-circle xlarge" id="settingsAvatar">?</div>
+      <div class="settings-email" id="settingsEmail"></div>
+    </div>
+
+    <div class="settings-list">
+      <button class="settings-item" id="openUsageBtn">
+        <span class="settings-item-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        </span>
+        <span class="settings-item-text">Usage &amp; limit</span>
+        <span class="settings-item-chevron">›</span>
+      </button>
+
+      <button class="settings-item" id="copyEmailBtn">
+        <span class="settings-item-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
+        </span>
+        <span class="settings-item-text" id="copyEmailText">you@example.com</span>
+        <span class="settings-item-badge" id="copiedBadge">Copied!</span>
+      </button>
+
+      <button class="settings-item" id="openUpgradeBtn">
+        <span class="settings-item-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9 12 2"/></svg>
+        </span>
+        <span class="settings-item-text">Upgrade plan</span>
+        <span class="settings-item-chevron">›</span>
+      </button>
+
+      <button class="settings-item" id="openAppearanceBtn">
+        <span class="settings-item-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        </span>
+        <span class="settings-item-text">Appearance</span>
+        <span class="settings-item-chevron">›</span>
+      </button>
+
+      <button class="settings-item" id="openVoiceBtn" type="button">
+        <span class="settings-item-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v3M8 21h8"/></svg>
+        </span>
+        <span class="settings-item-text">Voice</span>
+        <span class="settings-item-chevron">›</span>
+      </button>
+      <button class="settings-item" id="openNotificationsBtn">
+        <span class="settings-item-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </span>
+        <span class="settings-item-text">Notifications</span>
+        <span class="settings-item-chevron">›</span>
+      </button>
+
+      <button class="settings-item hidden" id="openAdminBtn" type="button" aria-hidden="true">
+        <span class="settings-item-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 20 5v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+        <span class="settings-item-text">Admin panel</span><span class="settings-item-chevron">›</span>
+      </button>
+
+      <button class="settings-item feedback-entry" id="openFeedbackBtn" type="button">
+        <span class="settings-item-icon">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.3 9.8 9.8 0 0 1-4.1-.9L3 20l1.3-4.3A8.1 8.1 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5Z"/><path d="M8 11.5h.01M12 11.5h.01M16 11.5h.01" stroke-width="2.8"/></svg>
+        </span>
+        <span class="settings-item-text">Report a problem</span>
+        <span class="settings-item-chevron">›</span>
+      </button>
+
+      <button class="settings-item settings-item-danger" id="openLogoutBtn">
+        <span class="settings-item-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </span>
+        <span class="settings-item-text">Log out</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="adminOverlay" class="fullscreen-overlay hidden" aria-hidden="true">
+    <div class="fullscreen-header"><button class="icon-btn" id="closeAdminBtn" aria-label="Close">×</button><div class="fullscreen-title">Admin panel</div><div class="fullscreen-header-spacer"></div></div>
+    <div class="admin-panel-body">
+      <div class="admin-panel-intro"><strong>Account management</strong><span>Database-backed administrator panel. Reads registered accounts and saves plan overrides globally.</span></div>
+      <div id="adminStatus" class="admin-status" aria-live="polite">Loading accounts…</div>
+      <input id="adminSearch" class="admin-search" type="search" placeholder="Search accounts on this device…" autocomplete="off" />
+      <div id="adminUsersList" class="admin-users-list"></div>
+    </div>
+  </div>
+
+  <!-- ===== Usage & Limit sub-screen ===== -->
+  <div id="usageOverlay" class="fullscreen-overlay sub-overlay hidden">
+    <div class="fullscreen-header">
+      <button class="icon-btn" data-back="settings" aria-label="Back">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="fullscreen-title">Usage &amp; limit</div>
+      <div class="fullscreen-header-spacer"></div>
+    </div>
+    <div class="usage-detail" id="usageDetail"></div>
+  </div>
+
+  <!-- ===== Appearance sub-screen ===== -->
+  <div id="appearanceOverlay" class="fullscreen-overlay sub-overlay hidden">
+    <div class="fullscreen-header">
+      <button class="icon-btn" data-back="settings" aria-label="Back">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="fullscreen-title">Appearance</div>
+      <div class="fullscreen-header-spacer"></div>
+    </div>
+    <div class="appearance-options">
+      <button class="option-row" data-theme="system">
+        <span>System default</span><span class="option-check" id="checkSystem">✓</span>
+      </button>
+      <button class="option-row" data-theme="dark">
+        <span>Dark</span><span class="option-check" id="checkDark">✓</span>
+      </button>
+      <button class="option-row" data-theme="light">
+        <span>Light</span><span class="option-check" id="checkLight">✓</span>
+      </button>
+
+      <div class="appearance-widget-card">
+        <div class="appearance-widget-head">
+          <div class="appearance-widget-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="4"/><path d="M7 9h.01M12 9h.01M17 9h.01"/><path d="M7 15h10"/></svg>
+          </div>
+          <div class="appearance-widget-copy">
+            <strong>MaxNova Widget</strong>
+            <p>Get quick access to chat, media, and voice with MaxNova.</p>
+          </div>
+          <button type="button" class="native-widget-switch" id="nativeWidgetSwitch" role="switch" aria-checked="false" aria-label="Enable MaxNova Widget"><span></span></button>
+        </div>
+        <div class="appearance-widget-info">
+          <p><strong>What it does:</strong> When enabled in the native Android app, the MaxNova home-screen widget gives you three instant actions.</p>
+          <ul>
+            <li><strong>Chat:</strong> opens MaxNova, starts a new conversation, and focuses the keyboard.</li>
+            <li><strong>Media:</strong> opens MaxNova, starts a new conversation, and opens the media picker.</li>
+            <li><strong>Voice:</strong> opens MaxNova, starts a new conversation, and starts microphone input.</li>
+          </ul>
+          <p class="appearance-widget-note">Android may ask you to confirm adding the widget to your home screen. The widget is a native Android feature; the browser version cannot place a system widget by itself.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== AI Voice chooser ===== -->
+  <div id="voiceOverlay" class="fullscreen-overlay sub-overlay hidden" aria-hidden="true">
+    <div class="fullscreen-header">
+      <button class="icon-btn" data-back="settings" aria-label="Back">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="fullscreen-title">AI Voice</div>
+      <div class="fullscreen-header-spacer"></div>
+    </div>
+    <div class="voice-screen">
+      <div class="voice-galaxy-wrap" id="voiceGalaxyWrap" aria-label="AI voice visualizer">
+        <div class="voice-galaxy" id="voiceGalaxy">
+          <div class="voice-galaxy-core"></div>
+          <i class="voice-orbit voice-orbit-a"></i><i class="voice-orbit voice-orbit-b"></i>
+          <span class="voice-star voice-star-a"></span><span class="voice-star voice-star-b"></span><span class="voice-star voice-star-c"></span>
+        </div>
+      </div>
+      <div class="voice-now">
+        <strong id="voiceNowName">Nova</strong>
+        <span id="voiceNowEffect">Warm and friendly</span>
+      </div>
+      <div class="voice-list" id="voiceList" role="listbox" aria-label="AI voice choices"></div>
+      <p class="voice-note">Tap a voice to hear a short greeting. The galaxy ball reacts while the voice is speaking.</p>
+    </div>
+  </div>
+
+  <!-- ===== Notifications sub-screen ===== -->
+  <div id="notificationsOverlay" class="fullscreen-overlay sub-overlay hidden">
+    <div class="fullscreen-header">
+      <button class="icon-btn" data-back="settings" aria-label="Back">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="fullscreen-title">Notifications</div>
+      <div class="fullscreen-header-spacer"></div>
+    </div>
+    <div class="notif-content">
+      <p id="notifStatusText">Get notified on your phone when the AI finishes replying.</p>
+      <button class="primary" id="enableNotifBtn">Enable notifications</button>
+
+    </div>
+  </div>
+
+  <!-- ===== Users Feedback full-screen overlay ===== -->
+  <div id="feedbackOverlay" class="fullscreen-overlay sub-overlay hidden" aria-hidden="true">
+    <div class="fullscreen-header">
+      <button class="icon-btn" id="closeFeedbackBtn" aria-label="Back">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="fullscreen-title" id="feedbackTitle">Users Feedback</div>
+      <div class="fullscreen-header-spacer"></div>
+    </div>
+    <div class="feedback-body">
+      <div class="feedback-intro">Tell MaxNova what happened. Choose a category, describe the problem, and optionally attach a screenshot or other image.</div>
+      <div class="feedback-category-list" id="feedbackCategoryList">
+        <button type="button" class="feedback-category selected" data-feedback-category="Users Feedback">
+          <span class="feedback-category-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.3 9.8 9.8 0 0 1-4.1-.9L3 20l1.3-4.3A8.1 8.1 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5Z"/></svg></span><span>Users Feedback</span><span class="feedback-check">✓</span>
+        </button>
+        <button type="button" class="feedback-category" data-feedback-category="Report Issue / Bug">
+          <span class="feedback-category-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8l1 3h2v4h-2v6a3 3 0 0 1-3 3H10a3 3 0 0 1-3-3v-6H5V6h2l1-3Z"/><path d="M12 9v4M12 16h.01"/></svg></span><span>Report Issue / Bug</span><span class="feedback-check">✓</span>
+        </button>
+        <button type="button" class="feedback-category" data-feedback-category="Response Feedback">
+          <span class="feedback-category-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4V5Z"/><path d="m8 10 3 3 5-5"/></svg></span><span>Response Feedback</span><span class="feedback-check">✓</span>
+        </button>
+        <button type="button" class="feedback-category" data-feedback-category="Privacy and Harassment">
+          <span class="feedback-category-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 20 6v5c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-3Z"/><path d="M12 8v4M12 16h.01"/></svg></span><span>Privacy and Harassment</span><span class="feedback-check">✓</span>
+        </button>
+      </div>
+      <label class="feedback-label" for="feedbackComment">Comment</label>
+      <textarea id="feedbackComment" class="feedback-comment" maxlength="4000" placeholder="Tell us what happened, what you expected, and what we can improve…" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="true" name="maxnova_feedback"></textarea>
+      <div class="feedback-media-row">
+        <button type="button" class="feedback-media-btn" id="feedbackMediaBtn">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <span>Add image</span>
+        </button>
+        <input id="feedbackMediaInput" type="file" accept="image/*" hidden />
+        <div id="feedbackMediaPreview" class="feedback-media-preview hidden"></div>
+      </div>
+      <button type="button" class="primary feedback-submit-btn" id="submitFeedbackBtn">Send feedback</button>
+      <div id="feedbackStatus" class="feedback-status" aria-live="polite"></div>
+      <div class="feedback-guidance"><strong>Privacy &amp; safety:</strong> Do not include passwords, PINs, one-time codes, full card numbers, or other highly sensitive information. If reporting harassment or a safety issue, describe what happened and attach only the evidence needed to review it.</div>
+    </div>
+  </div>
+
+  <!-- ===== Kids Mode full-screen overlay ===== -->
+  <div id="kidsModeOverlay" class="fullscreen-overlay hidden" aria-hidden="true">
+    <div class="fullscreen-header">
+      <button class="icon-btn" id="closeKidsModeBtn" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="fullscreen-title">Kids Mode</div>
+      <div class="fullscreen-header-spacer"></div>
+    </div>
+    <div class="kids-mode-body">
+      <div class="kids-hero">
+        <div class="kids-hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 11.5c-1.8-1.4-2.8-3.1-2.8-5A4.3 4.3 0 0 1 10 2.2c.9 0 1.7.3 2.4.8.7-.5 1.5-.8 2.4-.8a4.3 4.3 0 0 1 4.3 4.3c0 1.9-1 3.6-2.8 5"/><path d="M8.5 11.5c-1.3.8-2.2 2.1-2.2 3.7 0 2.8 2.5 5.1 5.6 5.1s5.6-2.3 5.6-5.1c0-1.6-.9-2.9-2.2-3.7"/><path d="M9.8 14.5c1.4 1.1 3 1.1 4.4 0"/></svg></div>
+        <div><h2>MaxNova Kids Mode</h2><p>Turns MaxNova into a friendly, age-appropriate learning assistant.</p></div>
+      </div>
+      <div class="kids-toggle-card">
+        <div><strong>Enable Kids Mode</strong><span id="kidsModeStateText">Off</span></div>
+        <button type="button" class="kids-switch" id="kidsModeSwitch" role="switch" aria-checked="false" aria-label="Enable Kids Mode"><span></span></button>
+      </div>
+      <button type="button" class="primary kids-enable-btn" id="kidsModeEnableBtn">Enable Kids Mode</button>
+      <section class="kids-info-card">
+        <h3>What Kids Mode does</h3>
+        <p>When enabled, MaxNova is instructed to act like a patient kids teacher. Answers are simplified, encouraging, educational, and age-appropriate.</p>
+        <ul>
+          <li>Focuses on school subjects, learning, creativity, stories, science, math, language, general knowledge, and safe everyday questions.</li>
+          <li>Avoids adult sexual content, explicit adult themes, graphic violence, instructions for dangerous activities, drugs, gambling, and other age-inappropriate material.</li>
+          <li>When a request is not appropriate for Kids Mode, MaxNova should refuse briefly and redirect the child toward a safe learning topic.</li>
+          <li>Kids Mode is an AI safety setting, not a replacement for active parental supervision, device controls, or age verification.</li>
+        </ul>
+        <h3>Parent / guardian guidance</h3>
+        <p>Parents and guardians should supervise use, talk with children about sharing personal information, and use the device's own parental controls where appropriate. Do not allow children to share passwords, addresses, phone numbers, school credentials, payment information, or private family details with an AI.</p>
+        <p class="kids-note">Kids Mode is saved on this device until you switch it off. It does not make MaxNova perfect or guarantee that every answer is suitable, so supervision remains important.</p>
+      </section>
+    </div>
+  </div>
+
+  <!-- ===== Images full-screen overlay ===== -->
+  <div id="imagesOverlay" class="fullscreen-overlay hidden">
+    <div class="fullscreen-header">
+      <button class="icon-btn" id="closeImagesBtn" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="fullscreen-title">Images</div>
+      <div class="fullscreen-header-spacer"></div>
+    </div>
+
+    <div class="images-body">
+      <div class="free-images-status" id="freeImagesStatus">Free AI image generation — no API key required</div>
+
+      <div id="imagesResult" class="images-result hidden">
+        <div id="imagesResultCard" class="images-result-card image-result-loading-card">
+          <div id="imagesResultLoading" class="images-result-loading hidden" aria-live="polite">
+            <span class="images-result-skeleton-shimmer"></span>
+            <div class="images-result-loading-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          </div>
+          <img id="imagesResultImg" class="hidden no-native-image-menu" alt="Generated image" decoding="async" draggable="false" />
+          <button type="button" id="imagesResultCornerDownload" class="image-corner-download hidden" aria-label="Download image" title="Download image">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          </button>
+        </div>
+        <div class="images-result-caption" id="imagesResultCaption"></div>
+        <div class="images-result-actions">
+          <a id="imagesResultDownload" class="images-result-btn" download>Save</a>
+          <button id="imagesResultCloseBtn" class="images-result-btn images-result-btn-secondary">Close</button>
+        </div>
+      </div>
+
+      <div class="images-section-title">Create an image</div>
+
+      <div class="tabs images-tabs" id="imagesTabs">
+        <button data-tab="trending" class="active">Trending</button>
+        <button data-tab="templates">Templates</button>
+      </div>
+
+      <div class="images-grid" id="imagesGrid"><!-- filled by JS --></div>
+    </div>
+
+    <div class="images-input-row">
+      <input id="imagesPromptInput" type="text" placeholder="Describe an image" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" name="maxnova_image_prompt" />
+      <button id="imagesGenerateBtn" class="images-generate-btn" aria-label="Generate image">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== Files full-screen overlay ===== -->
+  <div id="filesOverlay" class="fullscreen-overlay hidden">
+    <div class="fullscreen-header">
+      <button class="icon-btn" id="closeFilesBtn" aria-label="Close"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <div class="fullscreen-title">Files</div><div class="fullscreen-header-spacer"></div>
+    </div>
+    <div class="files-body" id="filesBody">
+      <div class="files-empty" id="filesEmpty">No saved files yet. When MaxNova creates or fixes a file for you, it will appear here automatically.</div>
+      <div class="files-list" id="filesList"></div>
+    </div>
+  </div>
+
+  <!-- ===== File previewer full-screen overlay (Files tab) =====
+       Opens/closes with the same slide-up + fade transition as every other
+       fullscreen-overlay (openOverlay/closeOverlay in chat.js). Lets the
+       person page Prev/Next through every saved file without closing. -->
+  <div id="filePreviewOverlay" class="fullscreen-overlay sub-overlay hidden">
+    <div class="fullscreen-header">
+      <button class="icon-btn" id="closeFilePreviewBtn" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="fullscreen-title" id="filePreviewTitle">File</div>
+      <div class="fullscreen-header-spacer"></div>
+    </div>
+    <div class="file-preview-body" id="filePreviewBody">
+      <iframe id="filePreviewFrame" class="file-preview-frame hidden" title="File preview" sandbox=""></iframe>
+      <img id="filePreviewImg" class="file-preview-img hidden no-native-image-menu" alt="File preview" decoding="async" draggable="false" />
+      <pre id="filePreviewText" class="file-preview-text hidden"></pre>
+      <div id="filePreviewFallback" class="file-preview-fallback hidden">
+        <span class="saved-file-icon"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h5"/></svg></span>
+        <p>No in-app preview is available for this file type. Use Save to download it instead.</p>
+      </div>
+    </div>
+    <div class="file-preview-footer">
+      <button type="button" id="filePreviewPrevBtn" class="file-preview-nav-btn" aria-label="Previous file">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <button type="button" id="filePreviewSaveBtn" class="file-preview-action-btn">Save</button>
+      <button type="button" id="filePreviewDeleteBtn" class="file-preview-action-btn danger">Delete</button>
+      <button type="button" id="filePreviewNextBtn" class="file-preview-nav-btn" aria-label="Next file">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== Library full-screen overlay ===== -->
+  <div id="libraryOverlay" class="fullscreen-overlay hidden">
+    <div class="fullscreen-header">
+      <button class="icon-btn" id="closeLibraryBtn" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="fullscreen-title">Library</div>
+      <div class="fullscreen-header-spacer"></div>
+    </div>
+
+    <div class="library-body" id="libraryBody">
+      <div class="library-empty" id="libraryEmpty">
+        No images yet. Create one from the <strong>Images</strong> tab and it'll show up here.
+      </div>
+      <div class="library-grid" id="libraryGrid"></div>
+    </div>
+  </div>
+
+  <!-- ===== Library image lightbox ===== -->
+  <div id="libraryLightbox" class="fullscreen-overlay sub-overlay hidden">
+    <div class="fullscreen-header">
+      <button class="icon-btn" id="closeLightboxBtn" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="fullscreen-title">Image</div>
+      <div class="fullscreen-header-spacer"></div>
+    </div>
+    <div class="images-result">
+      <div class="images-result-card image-result-loading-card">
+        <div id="lightboxLoading" class="images-result-loading hidden" aria-live="polite">
+          <span class="images-result-skeleton-shimmer"></span>
+          <div class="images-result-loading-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        </div>
+        <img id="lightboxImg" class="hidden no-native-image-menu" alt="" decoding="async" draggable="false" />
+      </div>
+      <div class="images-result-caption" id="lightboxCaption"></div>
+      <div class="images-result-actions">
+        <a id="lightboxDownload" class="images-result-btn" download>Save</a>
+        <button id="lightboxDeleteBtn" class="images-result-btn images-result-btn-danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Generic fullscreen image previewer (chat images + generated images) ===== -->
+  <div id="imagePreviewOverlay" class="image-preview-overlay hidden" aria-hidden="true">
+    <div class="image-preview-backdrop"></div>
+    <div class="image-preview-stage">
+      <img id="imagePreviewImg" class="image-preview-img no-native-image-menu" alt="Image preview" decoding="async" draggable="false" />
+    </div>
+    <button type="button" id="imagePreviewClose" class="image-preview-close" aria-label="Close preview">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <button type="button" id="imagePreviewDownload" class="image-preview-download" aria-label="Download image" title="Download image">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+    </button>
+
+    <!-- Tap-anywhere action sheet: slides open from the exact point the
+         person tapped inside the previewer (see openImagePreviewActions in
+         chat.js) and offers Examine with AI / Share / Share with MaxNova AI. -->
+    <div id="imagePreviewActionsOverlay" class="image-preview-actions-overlay hidden" aria-hidden="true">
+      <div id="imagePreviewActionsCard" class="image-preview-actions-card" role="menu" aria-label="Image actions">
+        <button type="button" id="examineImageBtn" class="image-preview-action-btn" role="menuitem">
+          <span class="image-preview-action-icon">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.7 2.6 1.7 3.6 4.3 4.3-2.6.7-3.6 1.7-4.3 4.3-.7-2.6-1.7-3.6-4.3-4.3 2.6-.7 3.6-1.7 4.3-4.3Z"/><path d="M19 14c.3 1.1.7 1.5 1.8 1.8-1.1.3-1.5.7-1.8 1.8-.3-1.1-.7-1.5-1.8-1.8 1.1-.3 1.5-.7 1.8-1.8Z"/></svg>
+          </span>
+          <span class="image-preview-action-label">Examine with AI</span>
+        </button>
+        <button type="button" id="sharePromptBtn" class="image-preview-action-btn" role="menuitem">
+          <span class="image-preview-action-icon">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.7 13.5 6.6 4"/><path d="m15.3 6.5-6.6 4"/></svg>
+          </span>
+          <span class="image-preview-action-label">Share</span>
+        </button>
+        <button type="button" id="shareWithMaxNovaBtn" class="image-preview-action-btn" role="menuitem">
+          <span class="image-preview-action-icon">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <span class="image-preview-action-label">Share Image with MaxNova AI</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== User message actions bottom sheet ===== -->
+  <div id="messageActionsOverlay" class="message-actions-overlay hidden" aria-hidden="true">
+    <div id="messageActionsCard" class="message-actions-card" role="dialog" aria-modal="true" aria-labelledby="messageActionsTime">
+      <div class="message-actions-handle"></div>
+      <div class="message-actions-time" id="messageActionsTime"></div>
+      <div class="message-actions-list">
+        <button id="copyMessageBtn" class="message-action-item" type="button">
+          <span class="message-action-icon">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+          </span>
+          <span>Copy</span>
+        </button>
+        <button id="editMessageBtn" class="message-action-item" type="button">
+          <span class="message-action-icon">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </span>
+          <span>Edit message</span>
+        </button>
+        <button id="shareMessageBtn" class="message-action-item" type="button">
+          <span class="message-action-icon">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.7 13.5 6.6 4"/><path d="m15.3 6.5-6.6 4"/></svg>
+          </span>
+          <span>Share prompt</span>
+        </button>
+      </div>
+      <button id="closeMessageActionsBtn" class="message-actions-cancel" type="button">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ===== Log out confirm modal ===== -->
+  <div id="logoutModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-title">Log Out?</div>
+      <div class="modal-body">Are you sure? You can always come back and log in again.</div>
+      <div class="modal-actions">
+        <button id="cancelLogoutBtn" class="modal-btn secondary">Cancel</button>
+        <button id="confirmLogoutBtn" class="modal-btn danger">Log out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Kids Mode status transition ===== -->
+  <div id="kidsModeToast" class="kids-mode-toast hidden" role="status" aria-live="polite">
+    <div class="kids-mode-toast-icon">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <div>
+      <strong id="kidsModeToastTitle">Kids Mode turned on</strong>
+      <span>Your conversations now use Kids Mode safety settings.</span>
+    </div>
+  </div>
+
+  <!-- ===== Upgrade / Billing modal ===== -->
+  <div id="billingModal" class="billing-modal hidden" aria-hidden="true">
+    <div class="billing-backdrop" data-billing-close></div>
+    <section class="billing-sheet" role="dialog" aria-modal="true" aria-labelledby="billingTitle">
+      <button type="button" class="billing-close" id="billingCloseBtn" aria-label="Close billing">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <div class="billing-orbit" aria-hidden="true"><span></span><span></span><span></span></div>
+      <div class="billing-kicker">MAXNOVA PLANS</div>
+      <h2 id="billingTitle">Upgrade your MaxNova</h2>
+      <p class="billing-subtitle">Choose a plan. On Android, MaxNova uses the official Google Play Billing purchase sheet for subscriptions.</p>
+      <div class="billing-native-badge" aria-label="Google Play Billing">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5 17.5 10.6c1 .6 1 2 0 2.6L7 19.5c-.9.5-2-.1-2-1.1V5.6c0-1 .9-1.6 2-1.1Z"/><path d="m5.5 5.1 8 6.8-8 6.9"/></svg>
+        <span>Google Play Billing</span>
+      </div>
+      <div class="billing-cycle" id="billingCycle">
+        <button type="button" data-cycle="monthly" class="selected">Monthly</button>
+        <button type="button" data-cycle="annual">Annual</button>
+      </div>
+      <div class="billing-plans" id="billingPlans"></div>
+      <div class="billing-checkout-panel hidden" id="billingCheckoutPanel">
+        <div class="billing-checkout-title">Google Play subscription</div>
+        <div class="billing-order" id="billingOrder"></div>
+        <button type="button" class="billing-pay-btn" id="billingPayBtn">Continue with Google Play</button>
+        <div class="billing-status" id="billingStatus" aria-live="polite"></div>
+        <div class="billing-google-note">Google Play shows the payment method, MaxNova app identity, price, billing period, and confirmation screen.</div>
+      </div>
+      <div class="billing-note">MaxNova never asks for a GCash PIN, OTP, or card password inside the app. Android subscriptions are handled by Google Play.</div>
+    </section>
+  </div>
+
+  <script src="config.js?v=8"></script>
+  <script src="plans.js?v=7"></script>
+  <script src="billing.js?v=6"></script>
+  <script src="chat.js?v=35"></script>
+</body>
+</html>

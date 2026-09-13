@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>MaxNova - Choose a plan</title>
+  <script>
+    (function () {
+      var pref = localStorage.getItem('maxnova_theme') || 'dark';
+      var isLight = pref === 'light' || (pref === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+      document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css?v=30" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="loadingScreen" class="loading-screen">Loading…</div>
+
+  <div id="pricingShell" class="pricing-shell hidden">
+    <a href="chat.html" class="pricing-back" id="pricingBackLink">← Back to chat</a>
+
+    <div id="welcomeBanner" class="welcome-banner hidden">
+      Welcome to MaxNova! Pick a plan to get started — you can always change this later.
+    </div>
+
+    <h1 class="pricing-title" id="pricingTitle">Choose a plan</h1>
+
+    <div class="tabs pricing-tabs" id="planTabs">
+      <button data-plan="free">Free</button>
+      <button data-plan="pro" class="active">Pro</button>
+      <button data-plan="max">Max</button>
+    </div>
+
+    <div class="pricing-card" id="pricingCard">
+      <!-- filled in by pricing.js -->
+    </div>
+
+    <div class="pricing-footer">
+      <a href="chat.html" class="pricing-stay-free" id="pricingStayLink">Stay on current plan</a>
+    </div>
+  </div>
+
+  <script src="config.js?v=3"></script>
+  <script src="plans.js?v=7"></script>
+  <script src="pricing.js?v=5"></script>
+</body>
+</html>
