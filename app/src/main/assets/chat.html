@@ -127,6 +127,26 @@
         <span>MaxNova can make mistakes. Check important information.</span>
       </div>
 
+      <div id="voiceRecordingBar" class="voice-recording-bar hidden" aria-live="polite" aria-hidden="true">
+  <button id="voiceCancelBtn" class="voice-recording-cancel" type="button" aria-label="Cancel recording" title="Cancel recording">×</button>
+  <div class="voice-recording-center">
+    <div class="voice-recording-status">
+      <span class="voice-recording-dot"></span>
+      <span id="voiceRecordingStatus">Recording</span>
+      <span id="voiceRecordingTimer">0:00</span>
+    </div>
+    <div id="voiceWaveform" class="voice-waveform" aria-hidden="true">
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+    </div>
+  </div>
+  <button id="voiceFinishBtn" class="voice-recording-send" type="button" aria-label="Send voice message" title="Send voice message">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 2 11 13"/>
+      <path d="m22 2-7 20-4-9-9-4Z"/>
+    </svg>
+  </button>
+</div>
       <div class="chat-input-row">
         <div class="chat-composer-main">
           <textarea id="chatInput" rows="1" placeholder="Type a message…" aria-label="Message" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" name="maxnova_message_box"></textarea>

@@ -3177,3 +3177,137 @@ body.auth-page { min-height: 100svh; overflow-x: hidden; }
   background: linear-gradient(135deg, #ff6b9d, #a06cff);
 }
 .ai-msg-action.like-btn.liked:hover { background: linear-gradient(135deg, #ff6b9d, #a06cff); }
+
+/* ===== Voice recording bar ===== */
+.voice-recording-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  border-top: 1px solid var(--border);
+  background: var(--field-bg);
+}
+
+.voice-recording-bar.hidden {
+  display: none;
+}
+
+.voice-recording-cancel,
+.voice-recording-send {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--field-bg);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.voice-recording-cancel {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.voice-recording-send {
+  color: var(--accent);
+}
+
+.voice-recording-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.voice-recording-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 22px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.voice-recording-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4d67;
+  animation: voiceRecordingPulse 1s infinite;
+}
+
+@keyframes voiceRecordingPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .35; transform: scale(.72); }
+}
+
+.voice-waveform {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.voice-waveform span {
+  display: block;
+  width: 3px;
+  min-height: 4px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: height .08s linear;
+}
+
+body.voice-recording-active .chat-input-row {
+  display: none;
+}
+
+body.voice-recording-active .chat-attachment-actions {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .voice-recording-bar {
+    min-height: 60px;
+    padding: 7px 8px;
+    gap: 8px;
+  }
+
+  .voice-recording-cancel,
+  .voice-recording-send {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+  }
+}
+
+
+/* ===== Voice message bubble ===== */
+.message-voice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(280px, 100%);
+  margin-bottom: 6px;
+}
+
+.message-voice-player {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  border-radius: 20px;
+}
+
+.message-voice-duration {
+  flex: 0 0 auto;
+  font-size: 11px;
+  opacity: .7;
+  font-variant-numeric: tabular-nums;
+}
