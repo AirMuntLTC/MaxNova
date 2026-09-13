@@ -1173,11 +1173,12 @@ function getRateLimitWaitMs(res, errText, attempt = 0) {
 }
 
 async function callGroq(body, attempt = 0) {
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/groq-chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${GROQ_API_KEY}`,
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
     },
     body: JSON.stringify(body),
   });
@@ -1321,9 +1322,6 @@ function isLikelySearchNeeded(text) {
 }
 
 async function getAssistantReply(msgs) {
-  if (!GROQ_API_KEY || GROQ_API_KEY === 'your-groq-api-key') {
-    return 'Add your Groq API key in config.js to start getting real replies.';
-  }
 
   const hasImageAttachment = msgs.some((m) => m.attachment && m.attachment.kind === 'image' && m.attachment.dataUrl);
   const hasFileAttachmentEarly = msgs.some((m) => m.attachment && m.attachment.kind === 'file' && m.attachment.textContent);
