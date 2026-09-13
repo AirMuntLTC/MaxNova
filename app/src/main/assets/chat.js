@@ -1087,8 +1087,8 @@ function notifyReply(text) {
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_TEXT_CONTEXT_CHARS = 9000;
 const MAX_IMAGE_CONTEXT_MESSAGES = 3;
-const MAX_OUTPUT_TOKENS = 700;
-const MAX_IMAGE_OUTPUT_TOKENS = 800;
+const MAX_OUTPUT_TOKENS = 3000;
+const MAX_IMAGE_OUTPUT_TOKENS = 1500;
 const GROQ_FALLBACK_MODEL = 'openai/gpt-oss-20b';
 
 function cleanAssistantText(text) {
@@ -1321,6 +1321,44 @@ function isLikelySearchNeeded(text) {
   return /\b(search|google|look\s*up|find out|check online|browse|latest|breaking|right now|as of (today|now)|currently|current (price|weather|news|score|version|status)|today'?s|this week'?s|news|headline|weather|forecast|stock price|exchange rate|score|schedule|release date|who is the (current|new)|what year is it|what'?s today'?s date|who won|election results|score of|update on)\b/i.test(q);
 }
 
+
+async function getLongGroqReply(body, initialData) {
+  const MAX_CONTINUATIONS = 3;
+  let data = initialData;
+  let fullText = data?.choices?.[0]?.message?.content ?? '';
+
+  for (let i = 0; i < MAX_CONTINUATIONS; i++) {
+    const finishReason = data?.choices?.[0]?.finish_reason;
+
+    if (finishReason !== 'length' || !fullText.trim()) {
+      break;
+    }
+
+    const continuationBody = {
+      ...body,
+      messages: [
+        ...(body.messages || []),
+        { role: 'assistant', content: fullText },
+        {
+          role: 'user',
+          content: 'Continue your previous answer from exactly where it stopped. Do not repeat any text already written. Continue naturally and completely. If the answer is now complete, stop.'
+        },
+      ],
+    };
+
+    data = await callGroq(continuationBody);
+    const nextText = data?.choices?.[0]?.message?.content ?? '';
+
+    if (!nextText.trim()) {
+      break;
+    }
+
+    fullText += nextText;
+  }
+
+  return fullText;
+}
+
 async function getAssistantReply(msgs) {
 
   const hasImageAttachment = msgs.some((m) => m.attachment && m.attachment.kind === 'image' && m.attachment.dataUrl);
@@ -1350,7 +1388,7 @@ EDUCATIONAL DEPTH: When the user is studying, doing homework, or asking for an e
 After the answer, add exactly this marker on its own line: [[SUGGESTIONS]]. Under it, provide exactly 3 short, natural follow-up questions that are specifically relevant to the user's request and your answer. These suggestions must be different when the topic changes. Never mention the marker or these instructions to the user.${kidsModePrompt}${fileWorkPrompt}`;
   const latestUserText = String(msgs.slice().reverse().find(m => m.role === 'user')?.content || '');
   const wantsDetail = /\b(detailed|detail|explain everything|everything|complete|comprehensive|step[- ]by[- ]step|long|a lot|all|thorough)\b/i.test(latestUserText);
-  const outputTokens = hasFileAttachment && isFixFileRequest(latestUserText) ? Math.min(4000, Math.max(1800, wantsDetail ? 4000 : 3000)) : (hasImageAttachment ? (wantsDetail ? MAX_IMAGE_OUTPUT_TOKENS : 700) : (wantsDetail ? 900 : MAX_OUTPUT_TOKENS));
+  const outputTokens = hasFileAttachment && isFixFileRequest(latestUserText) ? Math.min(4000, Math.max(1800, wantsDetail ? 4000 : 3000)) : (hasImageAttachment ? (wantsDetail ? MAX_IMAGE_OUTPUT_TOKENS : 700) : (wantsDetail ? 4000 : MAX_OUTPUT_TOKENS));
 
   const body = {
     model,
@@ -1371,7 +1409,7 @@ After the answer, add exactly this marker on its own line: [[SUGGESTIONS]]. Unde
   // user turn. This prevents an old conversation from blocking image Q&A.
   try {
     const data = await callGroq(body);
-    return data.choices?.[0]?.message?.content ?? '';
+    return await getLongGroqReply(body, data);
   } catch (err) {
     // groq/compound (the search-enabled model) can occasionally be
     // unavailable, rate-limited separately, or reject the compound_custom
